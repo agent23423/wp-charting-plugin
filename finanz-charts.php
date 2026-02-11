@@ -1,107 +1,152 @@
 <?php
 /**
- * Plugin Name: Finanz Charts WordPress Plugin
- * Plugin URI: https://vyftec.com/finanz-charts-plugin-stock-market-charting-solution/
- * Description: A comprehensive financial charting plugin for WordPress with RSI, MACD, and moving average indicators.
+ * Plugin Name: Finanz Charts
+ * Plugin URI: https://vyftec.com/finanz-charts
+ * Description: A professional financial charting plugin for WordPress with real-time stock market data, technical indicators, and advanced charting features.
  * Version: 1.0.0
  * Author: Finanz Charts GmbH
  * License: GPL v2 or later
  * Text Domain: finanz-charts
+ * Domain Path: /languages/
  */
 
 // Prevent direct access
-defined('ABSPATH') or die('No direct access allowed');
+defined( 'ABSPATH' ) || die( 'No direct access allowed!' );
 
 /**
- * Plugin Class
+ * Current plugin version
  */
-class FinanzChartsPlugin {
+define( 'FINANZ_CHARTS_VERSION', '1.0.0' );
+
+/**
+ * Plugin base path
+ */
+define( FINANZ_CHARTS_PATH, plugin_dirpath( __FILE__ ) );
+
+/**
+ * Plugin base URL
+ */
+define( FINANZ_CHARTS_URL, plugin_dir_url( __FILE__ ) );
+
+/**
+ * Plugin includes path
+ */
+define( FINANZ_CHARTS_INCLUDES_PATH, FINANZ_CHARTS_PATH . 'includes/' );
+
+/**
+ * Custom post type for charts
+ */
+define( 'FINANZ_CHARTS_POST_TYPE', 'finanz_chart' );
+
+/**
+ * Main plugin initialization
+ */
+function finanz_charts_init() {
+    require_once FINANZ_CHARTS_INCLUDES_PATH . 'class-plugin-loader.php';
     
-    /**
-     * Constructor
-     */
-    public function __construct() {
-        add_action('init', array($this, 'initialize'));
+    // Initialize the plugin loader
+    $loader = Plugin_Loader::get_instance();
+    
+    // Register shortcodes
+    add_action( 'init', array( $loader, 'register_shortcodes' ) );
+}
+
+// Initialize the plugin
+add_action( 'init', 'finanz_charts_init' );
+
+/**
+ * Activation hook
+ */
+function finanz_charts_activate() {
+    // Create default options
+    add_option( 'finanz_charts_alpha_vantage_key', '' );
+    add_option( 'finanz_charts_cache_enabled', true );
+    add_option( 'finanz_charts_cache_duration', 3600 );
+}
+
+/**
+ * Deactivation hook
+ */
+function finanz_charts_deactivate() {
+    // Clear cache on deactivation
+    require_once FINANZ_CHARTS_INCLUDES_PATH . 'class-cache-manager.php';
+    $cache_manager = new Cache_Manager();
+    $cache_manager->clear_all();
+}
+
+// Register activation and deactivation hooks
+register_activation_hook( __FILE__, 'finanz_charts_activate' );
+register_deactivation_hook( __FILE__, 'finanz_charts_deactivate' );
+
+/**
+ * Shortcode: [inanz_chart]
+ */
+function finanz_chart_shortcode( $atts ) {
+    require_once FINANZ_CHARTS_INCLUDES_PATH . 'class-plugin-loader.php';
+    $loader = Plugin_Loader::get_instance();
+    return $loader->render_chart_shortcode( $atts );
+}
+add_shortcode( 'finanz_chart', 'finanz_chart_shortcode' );
+
+/**
+ * Admin menu
+ */
+function finanz_charts_add_admin_menu() {
+    add_menu_page(
+        __( 'Finanz Charts', 'finanz-charts' ),
+        __( 'Finanz Charts', 'finanz-charts' ),
+        'manage_options',
+        'finanz_charts_settings',
+        'dashicons-chart-area',
+        30
+    );
+}
+add_action( 'admin_menu', 'finanz_charts_add_admin_menu' );
+
+/**
+ * Settings page
+ */
+function finanz_charts_settings() {
+    ?>
+    <div class="wrap">
+        <h1><?php __( 'Finanz Charts Settings', 'finanz-charts' ); ?></h1>
+        <form method="post" action="options.php">
+            <table class="form-table">
+                <tr>
+                    <th scope="row"><?php __( 'Alpha Vantage API Key', 'finanz_charts' ); ?></th>
+                    <td><input type="text" name="finanz_charts_alpha_vantage_key" value="<?php echo get_option( 'finanz_charts_alpha_vantage_key', '' ); ?>" size="50" /></td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php __( 'Cache Duration (seconds)', 'finanz-charts' ); ?></th>
+                    <td><input type="number" name="finanz_charts_cache_duration" value="<?php echo get_option( 'finanz_charts_cache_duration', 3600 ); ?>" /></td>
+                </tr>
+                <tr>
+                    <th scope="row"></th>
+                    <td><?php submit_button( __( 'Save Settings', 'finanz_charts' ) ); ?></td>
+                </tr>
+            </table>
+            <?php wp_nonce_field( 'finanz_charts_settings' ); ?>
+        </form>
+    </div>
+    <?php
+}
+
+/**
+ * Save settings
+ */
+function finanz_charts_save_settings() {
+    if ( !isset( $_POST['finanz_charts_settings_nonce'] ) || !wp_verify_nonce( $_POST['finanz_charts_settings_nonce'], 'finanz_charts_settings' ) ) {
+        return;
     }
     
-    /**
-     * Initialize the plugin
-     */
-    public function initialize() {
-        // Register shortcodes
-        add_shortcode('finanz_rsi_chart', array($this, 'rsi_shortcode'));
-        
-        // Enqueue scripts and styles
-        add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
-        add_action('wp_enqueue_styles', array($this, 'enqueue_styles'));
-        
-        // Register Ajax endpoints
-        add_action('wp_ajax', array($this, 'register_ajax_endpoints'));
+    if ( isset( $_POST['finanz_charts_alpha_vantage_key'] ) ) {
+        update_option( 'finanz_charts_alpha_vantage_key', sanitize_text_field( $_POST['finanz_charts_alpha_vantage_key'] ) );
     }
     
-    /**
-     * Enqueue scripts
-     */
-    public function enqueue_scripts() {
-        wp_enqueue_script('chart-js', 'https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/chart.js', array(), '2.9.4', true);
-        wp_enqueue_script('finanz-charts-rsi', plugins_url('finanz-ch\ËØ\ÜÙ]ËÚœËÜœÚKšœÉÊK\œ˜^J	ØÚ\ZœÉÊK	ÌKŒŒ	ËYJNÂˆBˆˆÊŠ‚ˆ
-ˆ[œ]Y]YHİ[\Âˆ
-‹ÂˆX›XÈ[˜İ[Ûˆ[œ]Y]YWÜİ[\Ê
-HÂˆÜÙ[œ]Y]YWÜİ[J	Ùš[˜[‹XÚ\Ë\İ[IËYÚ[œ×İ\›
-	Ùš[˜[‹XÚ\ËØ\ÜÙ]ËØÜÜËÜİ[K˜ÜÜÉÊK\œ˜^J
-K	ÌKŒŒ	ÊNÂˆBˆˆÊŠ‚ˆ
-ˆ™YÚ\İ\ˆZ˜^[™Ú[Âˆ
-‹ÂˆX›XÈ[˜İ[Ûˆ™YÚ\İ\—ØZ˜^Ù[™Ú[Ê
-HÂˆYØXİ[ÛŠ	İÜØZ˜^ÜœÚWØØ[İ[]IË\œ˜^J	\Ë	ØZ˜^ÜœÚWØØ[İ[]IÊJNÂˆBˆˆÊŠ‚ˆ
-ˆZ˜^[™\ˆ›Üˆ”ÒHØ[İ[][Û‚ˆ
-‹ÂˆX›XÈ[˜İ[ÛˆZ˜^ÜœÚWØØ[İ[]J
-HÂˆËÈ™\šYH›Û˜ÙBˆÚXÚ×ØZ˜^Ü™Y™\™\Š
-NÂˆˆËÈÙ]šXÙH]Hœ›ÛH™\]Y\İˆ	šXÙ\ÈHœÛÛ—ÙXÛÙJİš\Û\Ú\Ê	ÔÔÕÉÜšXÙ\É×JKYJNÂˆ	\š[ÙH[˜[
-	ÔÔÕÉÜ\š[Ù	×JNÂˆˆËÈØ[İ[]H”ÒBˆ	œÚHH	\ËO˜Ø[İ[]WÜœÚJ	šXÙ\Ë	\š[Ù
-NÂˆˆËÈ™]\›ˆ™\İ[ˆÜÜÙ[™ÚœÛÛŠ	œÚJNÂˆÜÙYJ
-NÂˆBˆˆÊŠ‚ˆ
-ˆ”ÒHØ[İ[][Ûˆ[˜İ[Û‚ˆ
-‹Âˆš]˜]H[˜İ[ÛˆØ[İ[]WÜœÚJ	šXÙ\Ë	\š[ÙHM
-HÂˆYˆ
-Ûİ[
-	šXÙ\ÊHH	\š[Ù
-HÂˆ™]\›ˆ\œ˜^J	Ù\œ›Ü‰ÈOˆ	Ó›İ[›İYÚ]HÚ[È›Üˆ”ÒHØ[İ[][Û‰ÊNÂˆBˆˆ	œÚWİ˜[Y\ÈH\œ˜^J
-NÂˆ	ØZ[œÈH\œ˜^J
-NÂˆ	ÜÜÙ\ÈH\œ˜^J
-NÂˆˆËÈØ[İ[]HØZ[œÈ[™ÜÜÙ\Âˆ›Üˆ
-	HHNÈ	HÛİ[
-	šXÙ\ÊNÈ	JÊÊHÂˆ	Ú[™ÙHH	šXÙ\ÖÉWHH	šXÙ\ÖÉKLWNÂˆYˆ
-	Ú[™ÙHH
-HÂˆ	ØZ[œÖ×HH	Ú[™ÙNÂˆ	ÜÜÙ\Ö×HHÂˆH[ÙHÂˆ	ØZ[œÖ×HHÂˆ	ÜÜÙ\Ö×HHXœÊ	Ú[™ÙJNÂˆBˆBˆˆËÈØ[İ[]H]™\˜YÙHØZ[ˆ[™]™\˜YÙHÜÜÂˆ	]™×ÙØZ[ˆH\œ˜^WÜÛXÙJ	ØZ[œË	\š[Ù
-NÂˆ	]™×ÛÜÜÈH\œ˜^WÜÛXÙJ	ÜÜÙ\Ë	\š[Ù
-NÂˆˆ	]™×ÙØZ[ˆH\œ˜^WÜİ[J	]™×ÙØZ[ŠHÈ	\š[ÙÂˆ	]™×ÛÜÜÈH\œ˜^WÜİ[J	]™×ÛÜÜÊHÈ	\š[ÙÂˆˆËÈØ[İ[]H”ÒH›Üˆš\œİ\š[ÙˆYˆ
-	]™×ÛÜÜÈOH
-HÂˆ	œÚWİ˜[Y\Ö×HHLÂˆH[ÙHÂˆ	œÈH	]™×ÙØZ[ˆÈ	]™×ÛÜÜÎÂˆ	œÚWİ˜[Y\Ö×HHLH
-LÈ
-H
-È	œÊJNÂˆBˆˆËÈØ[İ[]H”ÒH›Üˆ™[XZ[š[™ÈÚ[Âˆ›Üˆ
-	HH	\š[ÙÈ	HÛİ[
-	šXÙ\ÊNÈ	JÊÊHÂˆ	İ\œ™[ÙØZ[ˆH	ØZ[œÖÉKLWNÂˆ	İ\œ™[ÛÜÜÈH	ÜÜÙ\ÖÉKLWNÂˆˆ	]™×ÙØZ[ˆH
-
-]™×ÙØZ[ˆ
-ˆ
-	\š[ÙHJJH
-È	İ\œ™[ÙØZ[ŠHÈ	\š[ÙÂˆ	]™×ÛÜÜÈH
-
-	]™×ÛÜÜÈ
-ˆ
-	\š[ÙHJJH
-È	İ\œ™[ÛÜÜÊHÈ	\š[ÙÂˆˆYˆ
-	]™×ÛÜÜÈOH
-HÂˆ	œÚWİ˜[Y\Ö×HHLÂˆH[ÙHÂˆ	œÈH	]™×ÙØZ[ˆÈ	]™×ÛÜÜÎÂˆ	œÚWİ˜[Y\Ö×HHLH
-LÈ
-H
-È	œÚJJNÂˆBˆBˆˆ™]\›ˆ\œ˜^Jˆ	ÜİXØÙ\ÜÉÈOˆYKˆ	ÜœÚWİ˜[Y\ÉÈOˆ	œÚWİ˜[Y\Ëˆ	Ûİ™\˜›İYÚ	ÈOˆÌˆ	Ûİ™\œÛÛ	ÈOˆÌˆ	Û\İÜšXÙIÈOˆ[™
-	šXÙ\ÊKˆ	Øİ\œ™[ÜœÚIÈOˆ[™
-	œÚWİ˜[Y\ÊBˆ
-NÂˆBˆˆÊŠ‚ˆ
-ˆ”ÒHÚÜÛÙBˆ
-‹ÂˆX›XÈ[˜İ[ÛˆœÚWÜÚÜÛÙJ	]ÊHÂˆ	]ÈHÚÜÛÙWØ]Ê\œ˜^Jˆ	ÜŞ[X›Û	ÈOˆ	ĞT	Ëˆ	Ü\š[Ù	ÈOˆMˆ	İÚY	ÈOˆ	ÌL	IËˆ	ÚZYÚ	ÈOˆ	Í	Ëˆ	ÜÚİ×Û]™[ÉÈOˆ	İYIÂˆ
-K	]ÊNÂˆˆËÈÙ[™\˜]H[š\]YHQ›ÜˆHÚ\ˆ	Ú\ÚYH	ÜœÚKXÚ\IÈˆ[š\ZY
-
-NÂˆˆËÈÜ™X]HHÚ\ÛÛZ[™\‚ˆ	İ]]H	Ï]ˆÛ\ÜÏH™š[˜[‹\œÚKXÚ\‰ÎÂˆ	İ]]H	Ï]ˆYH‰Èˆ	Ú\ÚYˆ	Èˆİ[OHÚYˆ	Èˆ\Ø×Ø]Š	]ÖÉİÚY	×JHˆ	ÎÈZYÚˆ	Èˆ\Ø×Ø]Š	]ÖÉÚZYÚ	×JHˆ	ÎÈÙ]‰ÎÂˆ	İ]]H	ÏÙ]‰ÎÂˆˆËÈY˜]˜TØÜš\È[š]X[^™H
+    if ( isset( $_POST['finanz_charts_cache_duration'] ) ) {
+        update_option( 'finanz_charts_cache_duration', intval( $_POST['finanz_charts_cache_duration'] ) );
+    }
+    
+    wp_redirect( add_query_arg( array( 'page' => 'finanz_charts_settings', 'message' => 'saved' ), 'admin.php' ) );
+}
+add_action( 'admin_post_finanz_charts_settings', 'finanz_charts_save_settings' );
